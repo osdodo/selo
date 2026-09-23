@@ -1,0 +1,25 @@
+[package]
+name = "selo"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "selo"
+path = "src/main.rs"
+
+[dependencies]
+selo-core.workspace = true
+selo-engine.workspace = true
+selo-i18n.workspace = true
+selo-layout.workspace = true
+selo-ocr.workspace = true
+selo-platform.workspace = true
+selo-plugin.workspace = true
+selo-ui.workspace = true
+gpui.workspace = true
+gpui_platform.workspace = true
+
+[build-dependencies]
+embed-resource = "3"

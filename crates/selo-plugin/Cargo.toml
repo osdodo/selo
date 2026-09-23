@@ -1,0 +1,12 @@
+[package]
+name = "selo-plugin"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+keyring.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+toml.workspace = true

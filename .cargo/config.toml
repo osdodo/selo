@@ -1,0 +1,5 @@
+# gpui is a git dependency. cargo's bundled libgit2 cannot use ssh-agent, and a global
+# `url.git@github.com:.insteadOf https://github.com/` rewrite pushes it onto ssh anyway,
+# so let the git CLI do the fetching.
+[net]
+git-fetch-with-cli = true

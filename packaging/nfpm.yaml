@@ -1,0 +1,49 @@
+name: selo
+arch: ${ARCH}
+platform: linux
+version: ${VERSION}
+section: utils
+priority: optional
+maintainer: osdodo
+vendor: osdodo
+homepage: https://github.com/osdodo/selo
+license: GPL-3.0-or-later
+description: Selection translation and screenshot OCR translation.
+contents:
+  - src: target/release/selo
+    dst: /usr/bin/selo
+    file_info:
+      mode: 0755
+  - src: assets/AppIcon.png
+    dst: /usr/share/icons/hicolor/256x256/apps/selo.png
+  - src: packaging/selo.desktop
+    dst: /usr/share/applications/selo.desktop
+overrides:
+  deb:
+    depends:
+      - libc6
+    recommends:
+      - libfontconfig1
+      - libfreetype6
+      - libxkbcommon0
+      - libwayland-client0
+      - libx11-6
+      - libxcb1
+      - libssl3 | libssl3t64
+      - libvulkan1
+      - wl-clipboard
+      - tesseract-ocr
+  rpm:
+    depends:
+      - glibc
+    recommends:
+      - fontconfig
+      - freetype
+      - libxkbcommon
+      - libwayland-client
+      - libX11
+      - libxcb
+      - openssl-libs
+      - vulkan-loader
+      - wl-clipboard
+      - tesseract

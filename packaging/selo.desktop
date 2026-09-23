@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Selo
+Comment=Selection translation and screenshot OCR translation
+Exec=selo
+Icon=selo
+Terminal=false
+Type=Application
+Categories=Utility;

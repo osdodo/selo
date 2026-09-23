@@ -1,0 +1,74 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "GPL-3.0-or-later"
+
+[workspace.dependencies]
+selo-core = { path = "crates/selo-core" }
+selo-engine = { path = "crates/selo-engine" }
+selo-i18n = { path = "crates/selo-i18n" }
+selo-layout = { path = "crates/selo-layout" }
+selo-ocr = { path = "crates/selo-ocr" }
+selo-platform = { path = "crates/selo-platform" }
+selo-plugin = { path = "crates/selo-plugin" }
+selo-ui = { path = "crates/selo-ui" }
+
+gpui = { git = "https://github.com/zed-industries/zed", rev = "5f1a6530e93db19c01f9a81eed7a0e94d8ba9f5c" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "5f1a6530e93db19c01f9a81eed7a0e94d8ba9f5c", features = [
+    "font-kit",
+    "wayland",
+] }
+
+ashpd = { version = "0.13", default-features = false, features = [
+    "async-io",
+    "global_shortcuts",
+    "screenshot",
+    "file_chooser",
+] }
+async-io = "2"
+futures = "0.3"
+global-hotkey = "0.8"
+keyring = "4"
+ksni = { version = "0.3", features = ["blocking"] }
+wayland-client = "0.31"
+image = { version = "0.25", default-features = false, features = ["png"] }
+libc = "0.2"
+raw-window-handle = "0.6"
+reqwest = { version = "0.12", default-features = false, features = [
+    "native-tls",
+    "json",
+    "system-proxy",
+] }
+rquickjs = "0.13"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+toml = "0.8"
+tray-icon = "0.25"
+xcap = "0.9"
+windows = "0.62"
+windows-registry = "0.6"
+
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3.2", default-features = false }
+objc2-application-services = { version = "0.3.2", default-features = false }
+objc2-core-foundation = { version = "0.3.2", default-features = false }
+objc2-core-graphics = { version = "0.3.2", default-features = false }
+objc2-foundation = { version = "=0.3.2", default-features = false }
+
+[profile.dev.package."*"]
+opt-level = 2
+
+# Size-first: ~6 MB vs ~19 MB unstripped. `panic = "abort"` makes the catch_unwind around the
+# region OCR worker a no-op — a worker panic aborts instead of surfacing as an error.
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

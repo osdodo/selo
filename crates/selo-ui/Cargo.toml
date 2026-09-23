@@ -1,0 +1,15 @@
+[package]
+name = "selo-ui"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+selo-core.workspace = true
+selo-i18n.workspace = true
+selo-layout.workspace = true
+selo-platform.workspace = true
+gpui.workspace = true
+image.workspace = true
+raw-window-handle.workspace = true

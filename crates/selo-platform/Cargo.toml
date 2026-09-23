@@ -1,0 +1,112 @@
+[package]
+name = "selo-platform"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+selo-core.workspace = true
+selo-i18n.workspace = true
+global-hotkey.workspace = true
+image.workspace = true
+raw-window-handle.workspace = true
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+tray-icon.workspace = true
+xcap.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+ashpd.workspace = true
+async-io.workspace = true
+futures.workspace = true
+ksni.workspace = true
+wayland-client.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_Globalization",
+    "Win32_Graphics_Dwm",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Com",
+    "Win32_System_Console",
+    "Win32_System_DataExchange",
+    "Win32_System_Memory",
+    "Win32_System_Ole",
+    "Win32_UI_Accessibility",
+    "Win32_UI_Controls_Dialogs",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }
+windows-registry.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6"
+libc.workspace = true
+objc2.workspace = true
+objc2-app-kit = { workspace = true, features = [
+    "NSAlert",
+    "NSApplication",
+    "NSControl",
+    "NSEvent",
+    "NSGraphics",
+    "NSOpenPanel",
+    "NSPanel",
+    "NSPasteboard",
+    "NSPopUpButton",
+    "NSResponder",
+    "NSRunningApplication",
+    "NSScreen",
+    "NSSecureTextField",
+    "NSTextField",
+    "NSView",
+    "NSVisualEffectView",
+    "NSWindow",
+    "NSWorkspace",
+    "block2",
+    "libc",
+] }
+objc2-application-services = { workspace = true, features = [
+    "AXError",
+    "AXUIElement",
+    "HIServices",
+    "libc",
+    "objc2",
+    "std",
+] }
+objc2-core-foundation = { workspace = true, features = [
+    "CFArray",
+    "CFData",
+    "CFDictionary",
+    "CFNumber",
+    "CFString",
+    "std",
+] }
+objc2-core-graphics = { workspace = true, features = [
+    "CGDataProvider",
+    "CGDirectDisplay",
+    "CGError",
+    "CGEvent",
+    "CGEventSource",
+    "CGEventTypes",
+    "CGImage",
+    "CGRemoteOperation",
+    "CGWindow",
+    "std",
+] }
+objc2-foundation = { workspace = true, features = [
+    "NSArray",
+    "NSData",
+    "NSEnumerator",
+    "NSGeometry",
+    "NSLocale",
+    "NSValue",
+    "NSObjCRuntime",
+    "NSObject",
+    "NSString",
+    "NSURL",
+    "objc2-core-foundation",
+    "std",
+] }
