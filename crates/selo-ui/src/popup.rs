@@ -148,6 +148,7 @@ fn action(label: impl Into<SharedString>, active: bool) -> Div {
         .text_color(rgb(if active { 0xf2f2f4 } else { 0xd8dce5 }))
         .when(active, |button| button.bg(rgba(super::theme::ACTIVE)))
         .hover(|button| button.bg(rgba(super::theme::HOVER)))
+        .cursor_pointer()
         .child(label.into())
 }
 

@@ -105,6 +105,7 @@ impl Render for RegionSelect {
         div()
             .size_full()
             .bg(rgba(0x0000004d))
+            .cursor_crosshair()
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|this, event: &MouseDownEvent, _, cx| {

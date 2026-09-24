@@ -418,6 +418,8 @@ impl SettingsView {
                     .when(active, |row| row.bg(rgba(theme::ACTIVE)))
                     .text_color(if active { rgb(0xe8e8ea) } else { rgb(0xd0d4de) })
                     .hover(|row| row.bg(rgba(theme::HOVER)))
+                    .active(|row| row.bg(rgba(theme::ACTIVE)))
+                    .cursor_pointer()
                     .child(label)
                     .on_mouse_down(
                         MouseButton::Left,
@@ -479,6 +481,8 @@ impl SettingsView {
                     .text_size(px(13.))
                     .text_color(rgb(0xd8dce5))
                     .hover(|row| row.bg(rgba(theme::HOVER)))
+                    .active(|row| row.bg(rgba(theme::ACTIVE)))
+                    .cursor_pointer()
                     .child(service.name.clone())
                     .on_mouse_down(
                         MouseButton::Left,
@@ -603,6 +607,7 @@ impl SettingsView {
                             .text_size(px(13.))
                             .text_color(rgb(0xd0d4de))
                             .hover(|row| row.text_color(rgb(0xe8e8ea)))
+                            .cursor_pointer()
                             .child(t(Key::Back))
                             .on_mouse_down(
                                 MouseButton::Left,
@@ -799,6 +804,8 @@ fn card_action(
         .text_size(px(12.))
         .text_color(if danger { rgb(0xf7768e) } else { rgb(0xd8dce5) })
         .hover(|row| row.bg(rgba(theme::HOVER)))
+        .active(|row| row.bg(rgba(theme::ACTIVE)))
+        .cursor_pointer()
         .child(label)
 }
 
@@ -815,7 +822,9 @@ fn secondary_button(label: &'static str) -> gpui::Stateful<gpui::Div> {
         .bg(rgba(0xffffff14))
         .text_color(rgb(0xe4e7ee))
         .text_size(px(13.))
-        .hover(|button| button.opacity(0.9))
+        .hover(|button| button.bg(rgba(0xffffff1f)))
+        .active(|button| button.bg(rgba(theme::ACTIVE)))
+        .cursor_pointer()
         .child(label)
 }
 
@@ -886,6 +895,8 @@ fn field_element(
                     rgb(0xd8dce5)
                 })
                 .hover(|row| row.bg(rgba(theme::HOVER)))
+                .active(|row| row.bg(rgba(theme::ACTIVE)))
+                .cursor_pointer()
                 .child(choice.label.clone())
                 .on_mouse_down(
                     MouseButton::Left,
@@ -942,6 +953,8 @@ fn field_element(
                 } else {
                     rgb(0xe8e8ea)
                 })
+                .when(editable, |row| row.cursor_text())
+                .when(!editable, |row| row.cursor_pointer())
                 .child(match &ime {
                     Some(input) => input.clone().into_any_element(),
                     None if placeholder => div()
