@@ -906,22 +906,22 @@ impl Selo {
     ) -> selo_core::Result<()> {
         cx.background_executor().timer(OVERLAY_SETTLE).await;
         let ocr = self.ocr.clone();
-        let (image, device_scale, rendered, backdrop, dark, blocks) = cx
+        let (image, device_scale, rendered, fills, blocks, paragraphs) = cx
             .background_executor()
             .spawn(async move {
                 catch_unwind(AssertUnwindSafe(|| {
                     let image = capture(region)?;
                     let blocks = ocr.recognize(&image)?;
                     let device_scale = image.width as f32 / region.width.max(1) as f32;
-                    let (rendered, backdrop, dark) = prepare_overlay(&image, device_scale)
+                    let paragraphs = selo_layout::cluster(&blocks);
+                    let (rendered, fills) = prepare_overlay(&image, &paragraphs)
                         .map_err(|err| Error::Platform(err.to_string()))?;
-                    Ok::<_, Error>((image, device_scale, rendered, backdrop, dark, blocks))
+                    Ok::<_, Error>((image, device_scale, rendered, fills, blocks, paragraphs))
                 }))
                 .map_err(|_| Error::Platform("region OCR worker panicked".into()))?
             })
             .await?;
 
-        let paragraphs = selo_layout::cluster(&blocks);
         for b in &blocks {
             println!(
                 "  line {:.0}x{:.0} {:?}",
@@ -952,17 +952,7 @@ impl Selo {
         self.dismiss_popup(cx);
         self.dismiss_result(cx);
         let (window, view) = cx
-            .update(|cx| {
-                Overlay::open(
-                    cx,
-                    region,
-                    device_scale,
-                    rendered,
-                    backdrop,
-                    dark,
-                    &paragraphs,
-                )
-            })
+            .update(|cx| Overlay::open(cx, region, device_scale, rendered, &fills, &paragraphs))
             .map_err(|err| Error::Platform(err.to_string()))?;
 
         self.result = Some(window);

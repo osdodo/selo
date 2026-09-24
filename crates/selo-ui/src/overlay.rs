@@ -8,6 +8,7 @@ use selo_core::{Image, Rect, Region};
 use selo_i18n::{Key, t};
 use selo_layout::Paragraph;
 use std::cell::Cell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -19,7 +20,6 @@ const EDGE: f32 = 6.;
 const CORNER: f32 = 12.;
 const MIN_WIDTH: f64 = 120.;
 const MIN_HEIGHT: f64 = 60.;
-const BLUR: f32 = 20.;
 const LIGHT_TEXT: u32 = 0xf2f2f4;
 const DARK_TEXT: u32 = 0x1b1d24;
 
@@ -45,8 +45,7 @@ pub(crate) fn translated_block(
     phase: &OverlayPhase,
     scale: f32,
     max_width: f32,
-    backdrop: Option<&Backdrop>,
-    dark: bool,
+    fill: u32,
 ) -> impl IntoElement {
     div()
         .absolute()
@@ -56,26 +55,25 @@ pub(crate) fn translated_block(
         .max_w(px(max_width))
         .min_h(px(rect.height * scale))
         .rounded_sm()
+        .bg(rgb(fill))
         .text_size(font)
-        .text_color(rgb(if dark { LIGHT_TEXT } else { DARK_TEXT }))
-        .when_some(backdrop, |block, backdrop| {
-            block.overflow_hidden().child(
-                img(backdrop.image.clone())
-                    .absolute()
-                    .left(px(-rect.x * scale))
-                    .top(px(-rect.y * scale))
-                    .w(px(backdrop.width))
-                    .h(px(backdrop.height))
-                    .object_fit(ObjectFit::Fill),
-            )
-        })
+        .text_color(rgb(text_on(fill)))
         .child(div().px_1().child(phase.body()))
 }
 
-pub(crate) struct Backdrop {
-    pub image: Arc<RenderImage>,
-    pub width: f32,
-    pub height: f32,
+fn text_on(fill: u32) -> u32 {
+    if luma(fill) < 0.5 {
+        LIGHT_TEXT
+    } else {
+        DARK_TEXT
+    }
+}
+
+fn luma(color: u32) -> f32 {
+    let r = (color >> 16) & 0xff;
+    let g = (color >> 8) & 0xff;
+    let b = color & 0xff;
+    (0.2126 * r as f32 + 0.7152 * g as f32 + 0.0722 * b as f32) / 255.
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -113,6 +111,7 @@ struct Block {
     line_height: f32,
     phase: OverlayPhase,
     ratio: Rc<Cell<f32>>,
+    fill: u32,
 }
 
 type Fit = (Rc<Cell<f32>>, f32, f32, f32, f32);
@@ -121,8 +120,6 @@ type Fit = (Rc<Cell<f32>>, f32, f32, f32, f32);
 // window-move/resize are broken on this non-activating panel and a GPUI edge drag dies on pointer-out.
 pub struct Overlay {
     image: Arc<RenderImage>,
-    backdrop: Arc<RenderImage>,
-    dark: bool,
     region: Region,
     device_scale: f32,
     blocks: Vec<Block>,
@@ -140,17 +137,18 @@ impl Overlay {
         region: Region,
         device_scale: f32,
         rendered: Arc<RenderImage>,
-        backdrop: Arc<RenderImage>,
-        dark: bool,
+        fills: &[u32],
         paragraphs: &[Paragraph],
     ) -> gpui::Result<(WindowHandle<Self>, Entity<Self>)> {
         let blocks = paragraphs
             .iter()
-            .map(|paragraph| Block {
+            .enumerate()
+            .map(|(index, paragraph)| Block {
                 rect: paragraph.rect,
                 line_height: paragraph.line_height,
                 phase: OverlayPhase::Translating,
                 ratio: Rc::new(Cell::new(FONT_RATIO)),
+                fill: fills.get(index).copied().unwrap_or(0),
             })
             .collect();
 
@@ -186,8 +184,6 @@ impl Overlay {
             |_, cx| {
                 let entity = cx.new(|_| Self {
                     image: rendered,
-                    backdrop,
-                    dark,
                     region,
                     device_scale,
                     blocks,
@@ -313,50 +309,47 @@ fn resize_frame(edge: Edge, frame: (f64, f64, f64, f64), dx: f64, dy: f64) -> (f
     (x, y, w, h)
 }
 
-const BACKDROP_MAX: u32 = 512;
-
-fn backdrop(pixels: &image::RgbaImage, device_scale: f32) -> Arc<RenderImage> {
-    let longest = pixels.width().max(pixels.height());
-    let div = longest.div_ceil(BACKDROP_MAX).max(1);
-    if div <= 1 {
-        return bgra(image::imageops::fast_blur(pixels, BLUR * device_scale));
-    }
-    let small = image::imageops::resize(
-        pixels,
-        (pixels.width() / div).max(1),
-        (pixels.height() / div).max(1),
-        image::imageops::FilterType::Nearest,
-    );
-    bgra(image::imageops::fast_blur(
-        &small,
-        BLUR * device_scale / div as f32,
-    ))
-}
-
 pub fn prepare_overlay(
     image: &Image,
-    device_scale: f32,
-) -> gpui::Result<(Arc<RenderImage>, Arc<RenderImage>, bool)> {
+    paragraphs: &[Paragraph],
+) -> gpui::Result<(Arc<RenderImage>, Vec<u32>)> {
     let pixels = decode(image)?;
-    let dark = average_luma(&pixels) < 0.5;
-    let backdrop = backdrop(&pixels, device_scale);
-    Ok((bgra(pixels), backdrop, dark))
+    let fills = paragraphs
+        .iter()
+        .map(|paragraph| background_of(&pixels, paragraph.rect))
+        .collect();
+    Ok((bgra(pixels), fills))
 }
 
-fn average_luma(pixels: &image::RgbaImage) -> f32 {
-    let mut sum = 0.;
-    let mut count = 0u64;
-    for (index, pixel) in pixels.pixels().enumerate() {
-        if index % 16 == 0 {
-            sum += 0.2126 * pixel[0] as f32 + 0.7152 * pixel[1] as f32 + 0.0722 * pixel[2] as f32;
-            count += 1;
+// The dominant colour inside a line's box is its background; glyphs are the minority of pixels.
+fn background_of(pixels: &image::RgbaImage, rect: Rect) -> u32 {
+    let (w, h) = (pixels.width() as i64, pixels.height() as i64);
+    let x0 = rect.x.floor().max(0.) as i64;
+    let y0 = rect.y.floor().max(0.) as i64;
+    let x1 = ((rect.x + rect.width).ceil() as i64).min(w);
+    let y1 = ((rect.y + rect.height).ceil() as i64).min(h);
+    let mut bins: HashMap<u32, (u32, u64, u64, u64)> = HashMap::new();
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let pixel = pixels.get_pixel(x as u32, y as u32).0;
+            let bin = bins.entry(quantize(pixel)).or_insert((0, 0, 0, 0));
+            bin.0 += 1;
+            bin.1 += pixel[0] as u64;
+            bin.2 += pixel[1] as u64;
+            bin.3 += pixel[2] as u64;
         }
     }
-    if count == 0 {
-        1.
-    } else {
-        sum / count as f32 / 255.
+    match bins.into_iter().max_by_key(|(_, bin)| bin.0) {
+        Some((_, (count, r, g, b))) if count > 0 => {
+            let avg = |sum: u64| (sum / count as u64) as u32;
+            (avg(r) << 16) | (avg(g) << 8) | avg(b)
+        }
+        _ => 0,
     }
+}
+
+fn quantize(pixel: [u8; 4]) -> u32 {
+    ((pixel[0] as u32 >> 3) << 10) | ((pixel[1] as u32 >> 3) << 5) | (pixel[2] as u32 >> 3)
 }
 
 fn decode(image: &Image) -> gpui::Result<image::RgbaImage> {
@@ -433,12 +426,6 @@ impl Render for Overlay {
                 block.ratio.set(FONT_RATIO);
             }
         }
-
-        let backdrop = Backdrop {
-            image: self.backdrop.clone(),
-            width,
-            height: image_height,
-        };
 
         let fit: Vec<Fit> = self
             .blocks
@@ -533,8 +520,7 @@ impl Render for Overlay {
                             &block.phase,
                             scale,
                             max_width,
-                            Some(&backdrop),
-                            self.dark,
+                            block.fill,
                         )
                     })),
             )
@@ -561,11 +547,24 @@ mod tests {
     }
 
     #[test]
-    fn average_luma_picks_the_text_colour_side() {
-        let white = image::RgbaImage::from_pixel(8, 8, image::Rgba([255, 255, 255, 255]));
-        let black = image::RgbaImage::from_pixel(8, 8, image::Rgba([0, 0, 0, 255]));
-        assert!(average_luma(&white) >= 0.5);
-        assert!(average_luma(&black) < 0.5);
+    fn background_of_reads_the_dominant_colour_not_the_glyphs() {
+        let mut pixels = image::RgbaImage::from_pixel(20, 10, image::Rgba([250, 250, 250, 255]));
+        for x in 0..4 {
+            pixels.put_pixel(x, 5, image::Rgba([10, 10, 10, 255]));
+        }
+        let rect = Rect {
+            x: 0.,
+            y: 0.,
+            width: 20.,
+            height: 10.,
+        };
+        assert_eq!(background_of(&pixels, rect), 0xfafafa);
+    }
+
+    #[test]
+    fn light_fill_gets_dark_text_and_vice_versa() {
+        assert!(luma(0xffffff) >= 0.5);
+        assert!(luma(0x000000) < 0.5);
     }
 
     #[test]
